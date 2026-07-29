@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name:zh-CN   动漫花园种子屏蔽助手
 // @name         DMHY Torrent Block
-// @namespace    https://github.com/xkbkx5904
+// @namespace    https://github.com/kaseidis/dmhy-torrent-block-kk
 // @version      2.0.0
-// @author       xkbkx5904
+// @author       kaseidis
 // @description  Local-only DMHY filtering with a modern, readable interface
 // @description:zh-CN  仅本地运行的动漫花园资源屏蔽与页面美化工具。
 // @homepage     https://github.com/kaseidis/dmhy-torrent-block-kk
@@ -14,16 +14,17 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @noframes
-// @copyright    2025, xkbkx5904
-// @originalAuthor tautcony
-// @originalURL  https://greasyfork.org/zh-CN/scripts/36871-dmhy-block
+// @copyright    2026, kaseidis
+// @originalAuthor xkbkx5904
+// @originalURL  https://github.com/xkbkx5904/dmhy-torrent-block
 // @icon         https://share.dmhy.org/favicon.ico
 // @require      https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js
 // ==/UserScript==
 
 /*
- * 本地维护版 2.0
- * - 移除 GitHub Token、Gist 同步与公共统计功能
+ * 增强版脚本的本地维护 fork
+ * - 增强版原作者：xkbkx5904
+ * - 本地版作者：kaseidis
  * - 列表页和详情页使用独立的样式作用域
  * - 保留本地黑名单、标题转换、右键屏蔽与广告隐藏
  */
