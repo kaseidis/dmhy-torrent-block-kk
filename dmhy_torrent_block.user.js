@@ -1054,160 +1054,6 @@ class UIManager {
         });
     }
 
-    initGitHubEvents() {
-        const githubLoginSection = document.getElementById('github-login-section');
-        const githubSyncSection = document.getElementById('github-sync-section');
-        const githubUsername = document.getElementById('github-username');
-        const contributeStats = document.getElementById('contribute-stats');
-        const statsSection = document.getElementById('stats-section');
-        const tokenGuide = document.getElementById('token-guide');
-
-        // 显示登录状态
-        if (this.githubSyncManager.githubUser) {
-            githubLoginSection.style.display = 'none';
-            githubSyncSection.style.display = 'block';
-            githubUsername.textContent = this.githubSyncManager.githubUser;
-            contributeStats.checked = this.githubSyncManager.isContributing;
-        } else {
-            githubLoginSection.style.display = 'block';
-            githubSyncSection.style.display = 'none';
-        }
-
-        // 获取 Token 指南按钮
-        document.getElementById('get-token-guide')?.addEventListener('click', () => {
-            tokenGuide.style.display = tokenGuide.style.display === 'none' ? 'block' : 'none';
-        });
-
-        // 登录按钮
-        document.getElementById('github-login')?.addEventListener('click', async () => {
-            const token = document.getElementById('github-token').value.trim();
-            if (!token) {
-                alert('请输入 GitHub Personal Access Token');
-                return;
-            }
-
-            this.githubSyncManager.setToken(token);
-            if (await this.githubSyncManager.validateToken()) {
-                githubLoginSection.style.display = 'none';
-                githubSyncSection.style.display = 'block';
-                githubUsername.textContent = this.githubSyncManager.githubUser;
-            } else {
-                alert('Token 无效，请检查后重试');
-            }
-        });
-
-        // 退出按钮
-        document.getElementById('github-logout')?.addEventListener('click', () => {
-            this.githubSyncManager.setToken('');
-            this.githubSyncManager.setContributing(false);
-            githubLoginSection.style.display = 'block';
-            githubSyncSection.style.display = 'none';
-            statsSection.style.display = 'none';
-        });
-
-        // 同步到 GitHub
-        document.getElementById('sync-to-github')?.addEventListener('click', async () => {
-            if (await this.githubSyncManager.updateGist()) {
-                alert('同步成功');
-                if (this.githubSyncManager.isContributing) {
-                    await this.githubSyncManager.contributeToPublicStats();
-                }
-            } else {
-                alert('同步失败，请检查网络连接或 Token 权限');
-            }
-        });
-
-        // 从 GitHub 同步
-        document.getElementById('sync-from-github')?.addEventListener('click', async () => {
-            if (await this.githubSyncManager.syncFromGist()) {
-                this.fillManagerData();
-                this.filterManager.applyFilters();
-                alert('同步成功');
-            } else {
-                alert('同步失败，请检查网络连接或 Token 权限');
-            }
-        });
-
-        // 贡献到公共统计池
-        contributeStats?.addEventListener('change', async (e) => {
-            this.githubSyncManager.setContributing(e.target.checked);
-            if (e.target.checked) {
-                await this.githubSyncManager.contributeToPublicStats();
-                await this.updateStatsList();
-                statsSection.style.display = 'block';
-            } else {
-                // 取消贡献时，从公共池中移除数据
-                await this.githubSyncManager.removeFromPublicStats();
-                statsSection.style.display = 'none';
-            }
-        });
-    }
-
-    async updateStatsList() {
-        const statsList = document.getElementById('stats-list');
-        const statsLastUpdate = document.getElementById('stats-last-update');
-        const stats = await this.githubSyncManager.getPublicStats();
-        
-        if (stats && stats.length > 0) {
-            const html = stats.slice(0, 10).map((stat, index) => `
-                <div style="padding:5px;border-bottom:1px solid #eee;">
-                    ${index + 1}. ${stat.userName} (ID: ${stat.userId}) - 被 ${stat.count} 人屏蔽
-                </div>
-            `).join('');
-            statsList.innerHTML = html;
-            statsLastUpdate.textContent = new Date().toLocaleString();
-        } else {
-            statsList.innerHTML = '<div style="padding:5px;color:#666;">暂无统计数据</div>';
-            statsLastUpdate.textContent = '-';
-        }
-    }
-
-    updateAllTitles() {
-        document.querySelectorAll(CONFIG.selectors.titleCell).forEach(cell => {
-            if (this.displayMode === 'original') {
-                const originalHTML = cell.getAttribute('data-original-html');
-                if (originalHTML) {
-                    cell.innerHTML = originalHTML;
-                }
-                return;
-            }
-
-            if (!cell.hasAttribute('data-original-html')) {
-                cell.setAttribute('data-original-html', cell.innerHTML);
-            }
-
-            const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, null, false);
-            const textNodes = [];
-            let node;
-            while (node = walker.nextNode()) {
-                textNodes.push(node);
-            }
-
-            textNodes.forEach(textNode => {
-                const originalText = textNode.textContent;
-                
-                // 如果文本不需要转换，直接跳过
-                if (!this.shouldConvertText(originalText)) {
-                    return;
-                }
-
-                // 智能分割文本
-                const parts = this.splitText(originalText);
-                let newText = '';
-
-                parts.forEach(part => {
-                    if (part.needConvert) {
-                        const { simplified, traditionalTW } = Utils.convertText(part.text);
-                        newText += this.displayMode === 'simplified' ? simplified : traditionalTW;
-                    } else {
-                        newText += part.text;
-                    }
-                });
-
-                textNode.textContent = newText;
-            });
-        });
-    }
 }
 
 /**
@@ -1231,11 +1077,10 @@ class AdBlocker {
     static initDOMObserver() {
         const config = {
             childList: true,
-            subtree: true,
-            attributes: true,
+            subtree: true
         };
 
-        const observer = new MutationObserver((mutations) => {
+        const observer = new MutationObserver(() => {
             window.requestAnimationFrame(() => {
                 this.hideAds();
             });
