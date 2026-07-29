@@ -1183,146 +1183,87 @@ class PageBeautifier {
                 --dmhy-muted: #6c7d91;
             }
 
-        try {
-            const response = await fetch(`https://api.github.com/gists/${this.gistId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        'blocklist.json': {
-                            content: JSON.stringify(this.getBlockListData())
-                        }
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                console.error('[DMHY Block] 更新 Gist 失败:', response.status);
-                if (response.status === 404) {
-                    this.gistId = '';
-                    GM_setValue(CONFIG.storage.githubGistIdKey, '');
-                    return await this.createGist();
-                }
-                return false;
+            html { background: var(--dmhy-bg); }
+            body.dmhy-modern {
+                margin: 0 !important;
+                overflow-x: hidden;
+                color: var(--dmhy-text) !important;
+                background: var(--dmhy-bg) !important;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+                line-height: 1.55;
             }
 
-            return true;
-        } catch (error) {
-            console.error('[DMHY Block] Update gist error:', error);
-            return false;
-        }
-    }
-
-    async syncFromGist() {
-        if (!this.gistId) {
-            Utils.log('未找到 Gist ID，尝试查找现有 Gist');
-            if (!await this.findExistingGist()) {
-                Utils.log('未找到现有 Gist', 'warn');
-                return false;
-            }
-        }
-
-        try {
-            Utils.log(`从 Gist ${this.gistId} 同步数据`);
-            const response = await fetch(`https://api.github.com/gists/${this.gistId}`, {
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!response.ok) {
-                Utils.log(`从 Gist 同步失败: ${response.status}`, 'error');
-                if (response.status === 404) {
-                    this.gistId = '';
-                    GM_setValue(CONFIG.storage.githubGistIdKey, '');
-                    return await this.syncFromGist();
-                }
-                return false;
+            body.dmhy-modern .container,
+            body.dmhy-modern .bg {
+                width: 100% !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
             }
 
-            const gist = await response.json();
-            const content = JSON.parse(gist.files['blocklist.json'].content);
-            
-            this.blockListManager.updateBlockList('userId', content.userIds);
-            this.blockListManager.updateBlockList('keywords', content.keywords.map(k => {
-                if (k.startsWith('/') && k.endsWith('/')) {
-                    try {
-                        return new RegExp(k.slice(1, -1));
-                    } catch (e) {
-                        return k;
-                    }
-                }
-                return k;
-            }));
+            /* 顶部仅做安全的视觉覆盖，不改变原站浮动结构 */
+            body.dmhy-modern .header {
+                height: 100px !important;
+                color: #fff;
+                background: linear-gradient(110deg, #294f88 0%, #315f91 58%, #2f8b93 100%) !important;
+                box-shadow: 0 4px 18px rgba(23, 40, 65, .18);
+            }
+            body.dmhy-modern .headerleft { height: 100px !important; }
+            body.dmhy-modern .headerleft img { width: auto !important; height: 100px !important; }
+            body.dmhy-modern .headerright { padding: 12px 18px 0 0 !important; }
+            body.dmhy-modern .headerright .links {
+                height: auto !important;
+                padding: 7px 10px;
+                color: rgba(255,255,255,.45) !important;
+                background: rgba(16,35,62,.20) !important;
+                border: 1px solid rgba(255,255,255,.12);
+                border-radius: 8px;
+            }
+            body.dmhy-modern .headerright .links a { color: rgba(255,255,255,.86) !important; }
+            body.dmhy-modern .headerright .links a:hover { color: #fff !important; }
 
-            Utils.log('Gist 同步成功');
-            return true;
-        } catch (error) {
-            Utils.log('Gist 同步失败', 'error');
-            return false;
-        }
-    }
-
-    async getPublicStats() {
-        try {
-            const response = await fetch(`https://api.github.com/gists/${this.publicStatsGistId}`, {
-                headers: {
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!response.ok) {
-                console.error('[DMHY Block] 获取公共池数据失败:', response.status);
-                return null;
+            body.dmhy-modern .top_sort {
+                min-height: 44px !important;
+                background: rgba(255,255,255,.97) !important;
+                border-bottom: 1px solid var(--dmhy-line);
+                box-shadow: 0 2px 10px rgba(30,48,73,.08);
+            }
+            body.dmhy-modern .top_sort .menu { background: transparent !important; }
+            body.dmhy-modern .top_sort .menu > ul.nav { margin: 0 !important; padding: 6px 14px !important; }
+            body.dmhy-modern .top_sort .menu > ul.nav > li { width: auto !important; margin-right: 4px; }
+            body.dmhy-modern .top_sort .menu > ul.nav > li > a {
+                min-width: 62px;
+                padding: 4px 12px;
+                color: #465a73 !important;
+                border-radius: 999px;
+                line-height: 28px;
+            }
+            body.dmhy-modern .top_sort .menu > ul.nav > li > a font { color: inherit !important; }
+            body.dmhy-modern .top_sort .menu > ul.nav > li > a:hover {
+                color: var(--dmhy-blue) !important;
+                background: #eaf1fd !important;
             }
 
-            const gist = await response.json();
-            if (!gist.files || !gist.files['stats.json']) {
-                console.error('[DMHY Block] 公共池文件不存在');
-                return null;
+            body.dmhy-modern .main {
+                box-sizing: border-box;
+                width: min(1440px, calc(100vw - 32px)) !important;
+                margin: 20px auto 44px !important;
+                padding: 0 !important;
+                background: transparent !important;
             }
 
-            const content = gist.files['stats.json'].content;
-            if (!content) {
-                console.error('[DMHY Block] 公共池内容为空');
-                return null;
-            }
-
-            try {
-                const parsedContent = JSON.parse(content);
-                if (!parsedContent.contributors) {
-                    parsedContent.contributors = [];
-                }
-                
-                // 计算每个用户ID被屏蔽的次数
-                const stats = {};
-                parsedContent.contributors.forEach(contributor => {
-                    contributor.userIds.forEach(userId => {
-                        stats[userId] = (stats[userId] || 0) + 1;
-                    });
-                });
-
-                // 转换为数组并排序
-                const sortedStats = Object.entries(stats)
-                    .map(([userId, count]) => ({ userId: parseInt(userId), count }))
-                    .sort((a, b) => b.count - a.count);
-
-                // 获取所有用户ID的用户名
-                const userIds = sortedStats.map(stat => stat.userId);
-                const userNames = await this.getUserNames(userIds);
-
-                // 将用户名添加到统计结果中
-                return sortedStats.map(stat => ({
-                    ...stat,
-                    userName: userNames[stat.userId] || `用户${stat.userId}`
-                }));
-            } catch (parseError) {
-                console.error('[DMHY Block] 解析公共池数据失败:', parseError);
-                return null;
+            /* 搜索栏固定为三列，不再依赖旧站 input 宽度 */
+            body.dmhy-modern .quick_search {
+                box-sizing: border-box;
+                width: min(980px, 100%) !important;
+                margin: 16px auto !important;
+                padding: 12px !important;
+                color: var(--dmhy-text) !important;
+                background: #fff !important;
+                border: 1px solid var(--dmhy-line) !important;
+                border-radius: 11px;
+                box-shadow: 0 4px 16px rgba(34,55,85,.07);
             }
         } catch (error) {
             console.error('[DMHY Block] 获取公共统计失败:', error);
