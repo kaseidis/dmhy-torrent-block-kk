@@ -1442,58 +1442,124 @@ class PageBeautifier {
                 background: transparent !important;
                 border: 0 !important;
             }
+            body.dmhy-detail-page .user-sidebar,
+            body.dmhy-detail-page .topic-main {
+                float: none !important;
+                width: auto !important;
+                min-width: 0;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            body.dmhy-detail-page .user-sidebar {
+                grid-column: 1;
+                align-self: start;
+            }
+            body.dmhy-detail-page .topic-main { grid-column: 2; }
+            body.dmhy-detail-page .user-sidebar > .box,
+            body.dmhy-detail-page .topic-main > .box {
+                box-sizing: border-box;
+                margin: 0 0 14px !important;
+                padding: 16px !important;
+                color: var(--dmhy-text) !important;
+                background: #fff !important;
+                border: 1px solid var(--dmhy-line) !important;
+                border-radius: 11px !important;
+                box-shadow: 0 5px 18px rgba(31,52,80,.07);
+            }
+            body.dmhy-detail-page .user-sidebar > .box {
+                padding: 14px !important;
+                overflow: hidden;
+            }
+            body.dmhy-detail-page .user-sidebar img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            body.dmhy-detail-page .topics_cult {
+                color: var(--dmhy-text) !important;
+                font-weight: 500 !important;
+                max-height: 620px;
+                overflow-y: auto !important;
+            }
+            body.dmhy-detail-page .topics_cult li {
+                padding: 8px 0 !important;
+                text-align: left !important;
+                border-bottom: 1px solid #e8edf3;
+            }
+            body.dmhy-detail-page .topics_cult li:last-child { border-bottom: 0; }
 
-            const gist = await response.json();
-            if (!gist.files || !gist.files['stats.json']) {
-                console.error('[DMHY Block] 公共池文件不存在');
-                return;
+            body.dmhy-detail-page .topic-title h3 {
+                margin: 0 0 15px !important;
+                padding: 0 0 13px !important;
+                color: #203653 !important;
+                border-bottom: 1px solid var(--dmhy-line) !important;
+                font-size: 20px !important;
+                line-height: 1.45;
+            }
+            body.dmhy-detail-page .topic-title .resource-info {
+                float: none !important;
+                width: auto !important;
+                margin: 0 !important;
+                padding: 13px 15px;
+                color: #40546d;
+                background: #f6f8fb;
+                border: 1px solid #e1e7ef;
+                border-radius: 8px;
+                column-count: 2;
+                column-gap: 28px;
+                line-height: 2;
+            }
+            body.dmhy-detail-page .topic-title .relative-goods:empty { display: none !important; }
+
+            body.dmhy-detail-page .topic-nfo {
+                font-size: 14px;
+                line-height: 1.75;
+                overflow-wrap: anywhere;
+            }
+            body.dmhy-detail-page .topic-nfo p { margin: 7px 0; }
+            body.dmhy-detail-page .topic-nfo hr {
+                height: 0;
+                border: 0 !important;
+                border-top: 1px solid var(--dmhy-line) !important;
             }
 
-            const content = gist.files['stats.json'].content;
-            let parsedContent;
-            
-            try {
-                parsedContent = content ? JSON.parse(content) : { contributors: [] };
-            } catch (parseError) {
-                console.error('[DMHY Block] 解析公共池数据失败:', parseError);
-                parsedContent = { contributors: [] };
+            body.dmhy-detail-page .resource-detail {
+                overflow: hidden;
+                background-image: none !important;
             }
+            body.dmhy-detail-page .resource-detail .ui-tabs-nav,
+            body.dmhy-detail-page .resource-detail .tb_ {
+                margin: -16px -16px 15px !important;
+                padding: 10px 14px !important;
+                color: #fff !important;
+                background: var(--dmhy-navy) !important;
+                border: 0 !important;
+                list-style: none;
+            }
+            body.dmhy-detail-page .resource-detail .ui-tabs-panel,
+            body.dmhy-detail-page .resource-detail .dis {
+                padding: 0 !important;
+                color: var(--dmhy-text) !important;
+                background: transparent !important;
+                border: 0 !important;
+            }
+            body.dmhy-detail-page .file_list {
+                box-sizing: border-box;
+                width: 100% !important;
+                margin: 12px 0 0 !important;
+                padding: 8px !important;
+                background: #f7f9fc !important;
+                border: 1px solid var(--dmhy-line) !important;
+                border-radius: 7px;
+            }
+            body.dmhy-detail-page .comment { min-height: 52px; }
+            body.dmhy-detail-page .comment a { color: #315f9e !important; }
 
-            if (!parsedContent.contributors) {
-                parsedContent.contributors = [];
+            body.dmhy-modern .footer {
+                color: var(--dmhy-muted) !important;
+                background: transparent !important;
+                border: 0 !important;
             }
-            
-            // 更新或添加当前用户的贡献
-            const contributorIndex = parsedContent.contributors.findIndex(c => c.githubUser === this.githubUser);
-            if (contributorIndex >= 0) {
-                parsedContent.contributors[contributorIndex] = {
-                    githubUser: this.githubUser,
-                    userIds: userIds,
-                    lastUpdate: new Date().toISOString()
-                };
-            } else {
-                parsedContent.contributors.push({
-                    githubUser: this.githubUser,
-                    userIds: userIds,
-                    lastUpdate: new Date().toISOString()
-                });
-            }
-
-            // 更新 Gist
-            const updateResponse = await fetch(`https://api.github.com/gists/${this.publicStatsGistId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    files: {
-                        'stats.json': {
-                            content: JSON.stringify(parsedContent, null, 2)
-                        }
-                    }
-                })
-            });
+            body.dmhy-modern .footer a { color: #526b89 !important; }
 
             if (!updateResponse.ok) {
                 console.error('[DMHY Block] 更新公共池失败:', updateResponse.status);
