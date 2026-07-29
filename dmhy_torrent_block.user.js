@@ -521,12 +521,6 @@ class FilterManager {
     init() {
         Utils.log('应用过滤规则');
         this.applyFilters();
-        // 初始化时应用标题显示模式
-        this.uiManager?.updateAllTitles();
-    }
-
-    setUIManager(uiManager) {
-        this.uiManager = uiManager;
     }
 
     applyFilters() {
@@ -575,8 +569,7 @@ class FilterManager {
             }
         });
 
-        // 过滤后更新标题显示
-        this.uiManager?.updateAllTitles();
+        this.titleManager.updateAllTitles();
     }
 
     extractItemInfo(elem) {
@@ -602,10 +595,9 @@ class FilterManager {
  * UI管理类
  */
 class UIManager {
-    constructor(blockListManager, filterManager, githubSyncManager, titleManager) {
+    constructor(blockListManager, filterManager, titleManager) {
         this.blockListManager = blockListManager;
         this.filterManager = filterManager;
-        this.githubSyncManager = githubSyncManager;
         this.titleManager = titleManager;
         this.uiTexts = {
             manageButton: '管理种子黑名单',
@@ -628,27 +620,7 @@ class UIManager {
                 '- 多个ID之间用分号分隔'
             ],
             save: '保存',
-            close: '关闭',
-            githubSync: 'GitHub 同步',
-            login: '登录',
-            getTokenGuide: '获取 Token 指南',
-            howToGetToken: '如何获取 GitHub Token：',
-            tokenSteps: [
-                '点击下方按钮打开 GitHub Token 设置页面',
-                '点击 "Generate new token (classic)"',
-                '在 Note 中输入描述（如：DMHY Block）',
-                '在 Select scopes 中勾选 "gist"',
-                '点击底部的 "Generate token" 按钮',
-                '复制生成的 token 并粘贴到上方输入框'
-            ],
-            openTokenPage: '打开 Token 设置页面 →',
-            loggedInAs: '已登录为：',
-            logout: '退出',
-            syncToGithub: '同步到 GitHub',
-            syncFromGithub: '从 GitHub 同步',
-            contributeStats: '贡献到公共统计池（用于生成黑名单用户排行榜）',
-            userRanking: '黑名单用户排行榜',
-            lastUpdate: '最后更新：'
+            close: '关闭'
         };
     }
 
@@ -747,54 +719,6 @@ class UIManager {
                     <button id="save-blocklist" style="padding:5px 15px;">${this.convertText(this.uiTexts.save)}</button>
                     <button id="close-manager" style="padding:5px 15px;margin-left:10px;">${this.convertText(this.uiTexts.close)}</button>
                 </div>
-                <div style="margin-top:20px;border-top:1px solid #ccc;padding-top:10px;">
-                    <h4 style="margin:0 0 10px 0;">GitHub 同步</h4>
-                    <div id="github-login-section" style="display:none;">
-                        <div style="margin-bottom:10px;">
-                            <input type="text" id="github-token" placeholder="GitHub Personal Access Token" style="width:100%;margin-bottom:10px;padding:5px;">
-                            <button id="github-login" style="padding:5px 15px;">${this.convertText(this.uiTexts.login)}</button>
-                            <button id="get-token-guide" style="padding:5px 15px;margin-left:10px;background-color:#2ea44f;color:white;border:none;cursor:pointer;">
-                                ${this.convertText(this.uiTexts.getTokenGuide)}
-                            </button>
-                        </div>
-                        <div id="token-guide" style="display:none;background-color:#f6f8fa;padding:10px;border-radius:4px;margin-top:10px;font-size:12px;line-height:1.5;">
-                            <h5 style="margin:0 0 10px 0;">${this.convertText(this.uiTexts.howToGetToken)}</h5>
-                            <ol style="margin:0;padding-left:20px;">
-                                ${this.convertTextArray(this.uiTexts.tokenSteps).map(step => `<li>${step}</li>`).join('')}
-                            </ol>
-                            <div style="margin-top:10px;text-align:right;">
-                                <a href="https://github.com/settings/tokens" target="_blank" style="color:#0366d6;text-decoration:none;">
-                                    ${this.convertText(this.uiTexts.openTokenPage)}
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="github-sync-section" style="display:none;">
-                        <div style="margin-bottom:10px;">
-                            ${this.convertText(this.uiTexts.loggedInAs)}<span id="github-username"></span>
-                            <button id="github-logout" style="margin-left:10px;padding:2px 8px;">${this.convertText(this.uiTexts.logout)}</button>
-                        </div>
-                        <div style="margin-bottom:10px;">
-                            <button id="sync-to-github" style="padding:5px 15px;margin-right:10px;">${this.convertText(this.uiTexts.syncToGithub)}</button>
-                            <button id="sync-from-github" style="padding:5px 15px;">${this.convertText(this.uiTexts.syncFromGithub)}</button>
-                        </div>
-                        <div style="margin-bottom:10px;">
-                            <label>
-                                <input type="checkbox" id="contribute-stats">
-                                ${this.convertText(this.uiTexts.contributeStats)}
-                            </label>
-                        </div>
-                        <div id="stats-section" style="display:none;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                                <h5 style="margin:0;">${this.convertText(this.uiTexts.userRanking)}</h5>
-                                <div style="font-size:12px;color:#666;">
-                                    ${this.convertText(this.uiTexts.lastUpdate)}<span id="stats-last-update">-</span>
-                                </div>
-                            </div>
-                            <div id="stats-list" style="max-height:200px;overflow-y:auto;"></div>
-                        </div>
-                    </div>
-                </div>
             </div>
             <div id="blocklist-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;"></div>
         `;
@@ -802,14 +726,6 @@ class UIManager {
 
         this.initManagerEvents();
         this.fillManagerData();
-        this.initGitHubEvents();
-        
-        // 如果已开启贡献，显示统计信息并更新
-        if (this.githubSyncManager.isContributing) {
-            const statsSection = document.getElementById('stats-section');
-            statsSection.style.display = 'block';
-            await this.updateStatsList();
-        }
     }
 
     initManagerEvents() {
@@ -1058,12 +974,6 @@ class UIManager {
 
         if (addedUserIds.length > 0) {
             this.processNewUserIds(addedUserIds);
-        }
-
-        // 如果开启了贡献到公共池，自动同步
-        if (this.githubSyncManager.isContributing) {
-            await this.githubSyncManager.contributeToPublicStats();
-            await this.updateStatsList();
         }
 
         return true;
