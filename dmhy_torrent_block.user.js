@@ -1265,92 +1265,182 @@ class PageBeautifier {
                 border-radius: 11px;
                 box-shadow: 0 4px 16px rgba(34,55,85,.07);
             }
-        } catch (error) {
-            console.error('[DMHY Block] 获取公共统计失败:', error);
-            return null;
-        }
+            body.dmhy-modern .quick_search form {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) auto auto;
+                align-items: center;
+                gap: 9px;
+                width: 100%;
+            }
+            body.dmhy-modern .quick_search .quick_input {
+                box-sizing: border-box;
+                width: 100% !important;
+                height: 40px;
+                padding: 0 13px !important;
+                color: var(--dmhy-text) !important;
+                background: #f8fafc !important;
+                border: 1px solid #cbd7e6 !important;
+                border-radius: 7px;
+                outline: none;
+            }
+            body.dmhy-modern .quick_search .quick_input:focus {
+                border-color: var(--dmhy-blue) !important;
+                box-shadow: 0 0 0 3px rgba(53,111,214,.12);
+            }
+            body.dmhy-modern .quick_search .formButton {
+                height: 40px;
+                margin: 0 !important;
+                padding: 0 18px !important;
+                color: #fff !important;
+                background: var(--dmhy-blue) !important;
+                border: 0 !important;
+                border-radius: 7px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            body.dmhy-modern .quick_search form > a {
+                color: #526985 !important;
+                white-space: nowrap;
+                text-decoration: none !important;
+            }
+            body.dmhy-modern .quick_search #AdvSearch { grid-column: 1 / -1; }
+
+            body.dmhy-modern #dmhy-blocklist-ui {
+                top: auto !important;
+                bottom: 16px !important;
+                left: 16px !important;
+                display: flex;
+                gap: 7px;
+                padding: 7px;
+                background: rgba(28,42,68,.94) !important;
+                border: 1px solid rgba(255,255,255,.15);
+                border-radius: 10px;
+                box-shadow: 0 8px 24px rgba(14,24,42,.25);
+                backdrop-filter: blur(8px);
+            }
+            body.dmhy-modern #dmhy-blocklist-ui button {
+                margin: 0 !important;
+                padding: 7px 10px !important;
+                color: #f2f6ff !important;
+                background: rgba(255,255,255,.10) !important;
+                border: 1px solid rgba(255,255,255,.17) !important;
+                border-radius: 6px !important;
+            }
+        `;
     }
 
-    async removeFromPublicStats() {
-        try {
-            // 获取现有统计数据
-            const response = await fetch(`https://api.github.com/gists/${this.publicStatsGistId}`, {
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!response.ok) {
-                console.error('[DMHY Block] 获取公共池数据失败:', response.status);
-                return;
+    static getListPageStyles() {
+        return `
+            /* 列表页：所有选择器限定在 dmhy-list-page */
+            body.dmhy-list-page .dmhy-topic-card {
+                width: 100%;
+                overflow-x: auto;
+                background: #fff;
+                border: 1px solid var(--dmhy-line);
+                border-radius: 12px;
+                box-shadow: 0 7px 24px rgba(29,48,77,.09);
             }
-
-            const gist = await response.json();
-            if (!gist.files || !gist.files['stats.json']) {
-                console.error('[DMHY Block] 公共池文件不存在');
-                return;
+            body.dmhy-list-page table#topic_list {
+                width: 100% !important;
+                min-width: 1060px;
+                table-layout: fixed;
+                border: 0 !important;
+                border-collapse: separate !important;
+                border-spacing: 0 !important;
+                background: #fff;
+                font-size: 14px;
             }
-
-            const content = gist.files['stats.json'].content;
-            if (!content) {
-                console.error('[DMHY Block] 公共池内容为空');
-                return;
+            body.dmhy-list-page table#topic_list thead th {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                box-sizing: border-box;
+                height: 43px;
+                padding: 0 9px !important;
+                color: #edf3fb !important;
+                background: var(--dmhy-navy) !important;
+                border: 0 !important;
+                text-align: left !important;
+                white-space: nowrap;
+                line-height: 43px;
             }
-
-            try {
-                const parsedContent = JSON.parse(content);
-                if (!parsedContent.contributors) {
-                    parsedContent.contributors = [];
-                }
-                
-                // 移除当前用户的贡献
-                parsedContent.contributors = parsedContent.contributors.filter(c => c.githubUser !== this.githubUser);
-
-                // 更新 Gist
-                const updateResponse = await fetch(`https://api.github.com/gists/${this.publicStatsGistId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `token ${this.token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    body: JSON.stringify({
-                        files: {
-                            'stats.json': {
-                                content: JSON.stringify(parsedContent, null, 2)
-                            }
-                        }
-                    })
-                });
-
-                if (!updateResponse.ok) {
-                    console.error('[DMHY Block] 更新公共池失败:', updateResponse.status);
-                }
-            } catch (parseError) {
-                console.error('[DMHY Block] 解析公共池数据失败:', parseError);
+            body.dmhy-list-page table#topic_list tbody tr { background: #fff !important; }
+            body.dmhy-list-page table#topic_list tbody tr:nth-child(even) { background: #f6f8fb !important; }
+            body.dmhy-list-page table#topic_list tbody tr:hover {
+                background: #eaf2ff !important;
+                box-shadow: inset 4px 0 0 var(--dmhy-blue);
             }
-        } catch (error) {
-            console.error('[DMHY Block] 从公共池移除数据失败:', error);
-        }
+            body.dmhy-list-page table#topic_list tbody td {
+                box-sizing: border-box;
+                padding: 10px 9px !important;
+                color: #536278;
+                background: transparent !important;
+                border: 0 !important;
+                border-bottom: 1px solid #e4eaf1 !important;
+                vertical-align: middle !important;
+            }
+            body.dmhy-list-page table#topic_list th:nth-child(1),
+            body.dmhy-list-page table#topic_list td:nth-child(1) { width: 106px !important; }
+            body.dmhy-list-page table#topic_list th:nth-child(2),
+            body.dmhy-list-page table#topic_list td:nth-child(2) { width: 68px !important; text-align: center !important; }
+            body.dmhy-list-page table#topic_list th:nth-child(4),
+            body.dmhy-list-page table#topic_list td:nth-child(4) { width: 112px !important; text-align: center !important; }
+            body.dmhy-list-page table#topic_list th:nth-child(5),
+            body.dmhy-list-page table#topic_list td:nth-child(5) { width: 84px !important; text-align: center !important; }
+            body.dmhy-list-page table#topic_list th:nth-child(6),
+            body.dmhy-list-page table#topic_list td:nth-child(6),
+            body.dmhy-list-page table#topic_list th:nth-child(7),
+            body.dmhy-list-page table#topic_list td:nth-child(7),
+            body.dmhy-list-page table#topic_list th:nth-child(8),
+            body.dmhy-list-page table#topic_list td:nth-child(8) { width: 58px !important; text-align: center !important; }
+            body.dmhy-list-page table#topic_list th:nth-child(9),
+            body.dmhy-list-page table#topic_list td:nth-child(9) { width: 112px !important; text-align: center !important; }
+            body.dmhy-list-page table#topic_list td.title {
+                color: var(--dmhy-text);
+                line-height: 1.55;
+                overflow-wrap: anywhere;
+            }
+            body.dmhy-list-page table#topic_list td.title > a {
+                color: #235ca8 !important;
+                font-weight: 600;
+                text-decoration: none !important;
+            }
+            body.dmhy-list-page table#topic_list td.title span.tag {
+                display: inline;
+                margin: 0 5px 0 0 !important;
+                padding: 0 !important;
+                color: inherit !important;
+                background: transparent !important;
+                border: 0 !important;
+            }
+            body.dmhy-list-page table#topic_list td.title .tag a {
+                display: inline-block;
+                margin: 0;
+                padding: 2px 7px;
+                color: #227c7c !important;
+                background: #e7f6f5;
+                border: 1px solid #bee7e4;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.45;
+                text-decoration: none !important;
+            }
+        `;
     }
 
-    async contributeToPublicStats() {
-        if (!this.isContributing) return;
-
-        try {
-            const userIds = this.blockListManager.getUserIds();
-
-            // 获取现有统计数据
-            const response = await fetch(`https://api.github.com/gists/${this.publicStatsGistId}`, {
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (!response.ok) {
-                console.error('[DMHY Block] 获取公共池数据失败:', response.status);
-                return;
+    static getDetailPageStyles() {
+        return `
+            /* 详情页：独立双栏布局，不复用列表页的 table/box 规则 */
+            body.dmhy-detail-page .topics_bk {
+                display: grid !important;
+                grid-template-columns: 230px minmax(0, 1fr);
+                gap: 16px;
+                min-height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
+                border: 0 !important;
             }
 
             const gist = await response.json();
