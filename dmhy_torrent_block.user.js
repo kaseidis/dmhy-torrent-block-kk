@@ -1114,153 +1114,74 @@ class AdBlocker {
 }
 
 /**
- * 事件管理类
+ * 现代化页面外观，仅修改本地 DOM/CSS。
  */
-class EventManager {
-    constructor(filterManager) {
-        this.filterManager = filterManager;
+class PageBeautifier {
+    static init() {
+        const isListPage = Boolean(document.querySelector('#topic_list'));
+        const isDetailPage = Boolean(document.querySelector('.topics_bk .topic-main'));
+
+        document.body.classList.add('dmhy-modern');
+        if (isListPage) document.body.classList.add('dmhy-list-page');
+        if (isDetailPage) document.body.classList.add('dmhy-detail-page');
+
+        this.injectStyles();
+        this.normalizeSearchForm();
+        if (isListPage) this.wrapTopicTable();
     }
 
-    init() {
-        this.initSortingEvents();
-    }
+    static normalizeSearchForm() {
+        const form = document.querySelector('.quick_search form');
+        if (!form) return;
 
-    initSortingEvents() {
-        document.querySelectorAll("th.header").forEach(header => {
-            header.addEventListener('click', () => {
-                setTimeout(() => this.filterManager.applyFilters(), 100);
-            });
+        Array.from(form.childNodes).forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
+                node.remove();
+            }
         });
     }
-}
 
-/**
- * GitHub 同步管理类
- */
-class GitHubSyncManager {
-    constructor(blockListManager) {
-        Utils.log('初始化 GitHub 同步管理器');
-        this.blockListManager = blockListManager;
-        this.token = GM_getValue(CONFIG.storage.githubTokenKey, '');
-        this.gistId = GM_getValue(CONFIG.storage.githubGistIdKey, '');
-        this.isContributing = GM_getValue(CONFIG.storage.isContributingKey, false);
-        this.githubUser = GM_getValue(CONFIG.storage.githubUserKey, '');
-        this.publicStatsGistId = CONFIG.github.publicStatsGistId;
+    static wrapTopicTable() {
+        const table = document.querySelector('#topic_list');
+        if (!table || table.parentElement?.classList.contains('dmhy-topic-card')) return;
+
+        const card = document.createElement('div');
+        card.className = 'dmhy-topic-card';
+        table.parentNode.insertBefore(card, table);
+        card.appendChild(table);
     }
 
-    async init() {
-        if (this.token) {
-            await this.validateToken();
-        }
+    static injectStyles() {
+        if (document.getElementById('dmhy-modern-style')) return;
+
+        const style = document.createElement('style');
+        style.id = 'dmhy-modern-style';
+        style.textContent = this.buildStyleText();
+        document.head.appendChild(style);
     }
 
-    async validateToken() {
-        try {
-            Utils.log('验证 GitHub Token');
-            const response = await fetch('https://api.github.com/user', {
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
+    static buildStyleText() {
+        return [
+            this.getBaseStyles(),
+            this.getListPageStyles(),
+            this.getDetailPageStyles(),
+            this.getResponsiveStyles()
+        ].join('\n');
+    }
 
-            if (response.ok) {
-                const userData = await response.json();
-                this.githubUser = userData.login;
-                GM_setValue(CONFIG.storage.githubUserKey, this.githubUser);
-                Utils.log(`GitHub 用户验证成功: ${this.githubUser}`);
-                return true;
-            } else {
-                Utils.log('GitHub Token 无效', 'warn');
-                this.token = '';
-                this.githubUser = '';
-                GM_setValue(CONFIG.storage.githubTokenKey, '');
-                GM_setValue(CONFIG.storage.githubUserKey, '');
-                return false;
+    static getBaseStyles() {
+        return `
+
+            :root {
+                --dmhy-navy: #1c2a44;
+                --dmhy-blue: #356fd6;
+                --dmhy-teal: #248b8b;
+                --dmhy-bg: #eef2f7;
+                --dmhy-card: #fff;
+                --dmhy-line: #dbe3ed;
+                --dmhy-text: #26364b;
+                --dmhy-muted: #6c7d91;
             }
-        } catch (error) {
-            Utils.log('GitHub Token 验证失败', 'error');
-            return false;
-        }
-    }
-
-    async findExistingGist() {
-        try {
-            const response = await fetch('https://api.github.com/gists', {
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
-
-            if (response.ok) {
-                const gists = await response.json();
-                const existingGist = gists.find(gist => gist.description === CONFIG.github.gistDescription);
-                if (existingGist) {
-                    this.gistId = existingGist.id;
-                    GM_setValue(CONFIG.storage.githubGistIdKey, this.gistId);
-                    return true;
-                }
-            }
-            return false;
-        } catch (error) {
-            console.error('[DMHY Block] 查找 Gist 失败:', error);
-            return false;
-        }
-    }
-
-    getBlockListData() {
-        return {
-            userIds: this.blockListManager.getUserIds(),
-            keywords: this.blockListManager.getKeywords().map(k => 
-                k instanceof RegExp ? `/${k.source}/` : k
-            ),
-            lastUpdate: new Date().toISOString()
-        };
-    }
-
-    async createGist() {
-        try {
-            // 先检查是否已存在 Gist
-            if (await this.findExistingGist()) {
-                return true;
-            }
-
-            // 如果没有找到现有 Gist，创建新的
-            const createResponse = await fetch('https://api.github.com/gists', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `token ${this.token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                body: JSON.stringify({
-                    description: CONFIG.github.gistDescription,
-                    public: false,
-                    files: {
-                        'blocklist.json': {
-                            content: JSON.stringify(this.getBlockListData())
-                        }
-                    }
-                })
-            });
-
-            if (createResponse.ok) {
-                const gist = await createResponse.json();
-                this.gistId = gist.id;
-                GM_setValue(CONFIG.storage.githubGistIdKey, this.gistId);
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.error('[DMHY Block] Create gist error:', error);
-            return false;
-        }
-    }
-
-    async updateGist() {
-        if (!this.gistId) {
-            return await this.createGist();
-        }
 
         try {
             const response = await fetch(`https://api.github.com/gists/${this.gistId}`, {
