@@ -2,7 +2,7 @@
 // @name:zh-CN   动漫花园种子屏蔽助手
 // @name         DMHY Torrent Block
 // @namespace    https://github.com/kaseidis/dmhy-torrent-block-kk
-// @version      2.0.0
+// @version      2.0.1
 // @author       kaseidis
 // @description  Local-only DMHY filtering with a modern, readable interface
 // @description:zh-CN  仅本地运行的动漫花园资源屏蔽与页面美化工具。
@@ -10,7 +10,8 @@
 // @supportURL   https://github.com/kaseidis/dmhy-torrent-block-kk/issues
 // @match        *://share.dmhy.org/*
 // @license      MIT
-// @run-at       document-end
+// @run-at       document-start
+// @webRequest   {"selector":"*://atanx.alicdn.com/t/tanxssp.js*","action":"cancel"}
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @noframes
@@ -64,7 +65,12 @@ const CONFIG = {
     // 缓存配置
     cache: {
         textConverterSize: 200
-    }
+    },
+
+    // 已知推广脚本。仅匹配明确的主机和路径，避免误伤站点功能脚本。
+    blockedScripts: [
+        /^https?:\/\/atanx\.alicdn\.com\/t\/tanxssp\.js(?:[?#]|$)/i
+    ]
 };
 
 /**
@@ -1517,6 +1523,12 @@ class PageBeautifier {
                 overflow-wrap: anywhere;
             }
             body.dmhy-detail-page .topic-nfo p { margin: 7px 0; }
+            body.dmhy-detail-page .topic-nfo img {
+                box-sizing: border-box;
+                max-width: 70% !important;
+                height: auto !important;
+                object-fit: contain;
+            }
             body.dmhy-detail-page .topic-nfo hr {
                 height: 0;
                 border: 0 !important;
@@ -1923,15 +1935,24 @@ class EventManager {
 class App {
     static async init() {
         try {
-            Utils.log('初始化应用');
-            await Utils.init();
-            Utils.log('文字转换器初始化完成');
+            if (document.readyState === 'loading') {
+                await new Promise(resolve => {
+                    document.addEventListener('DOMContentLoaded', resolve, { once: true });
+                });
+            }
 
+            Utils.log('初始化应用');
             AdBlocker.init();
             Utils.log('广告拦截器初始化完成');
 
             PageBeautifier.init();
             Utils.log('页面美化完成');
+
+            LinkPreloader.init();
+            Utils.log('链接预加载完成');
+
+            await Utils.init();
+            Utils.log('文字转换器初始化完成');
 
             const blockListManager = new BlockListManager();
             await blockListManager.init();
@@ -1959,5 +1980,7 @@ class App {
 // 启动应用
 (function() {
     'use strict';
+    ScriptBlocker.init();
+    EarlyPageBootstrap.init();
     App.init();
 })();
