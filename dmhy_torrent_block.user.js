@@ -1561,51 +1561,77 @@ class PageBeautifier {
             }
             body.dmhy-modern .footer a { color: #526b89 !important; }
 
-            if (!updateResponse.ok) {
-                console.error('[DMHY Block] 更新公共池失败:', updateResponse.status);
+            #blocklist-manager {
+                box-sizing: border-box;
+                width: min(620px, calc(100vw - 28px)) !important;
+                border: 0 !important;
+                border-radius: 14px !important;
+                box-shadow: 0 18px 60px rgba(12,23,42,.30);
             }
-        } catch (error) {
-            console.error('[DMHY Block] 贡献到公共池失败:', error);
-        }
+            #blocklist-manager textarea {
+                box-sizing: border-box;
+                padding: 9px;
+                border-color: #ccd8e6 !important;
+                border-radius: 8px;
+                font: inherit;
+            }
+        `;
     }
 
-    async getUserNames(userIds) {
-        const userNames = {};
-        const unknownIds = userIds.filter(id => !this.blockListManager.userNameMap.has(id.toString()));
-
-        // 批量获取未知用户名的用户信息
-        for (const id of unknownIds) {
-            try {
-                const userName = await this.blockListManager.getUserName(id, true);
-                if (userName) {
-                    userNames[id] = userName;
+    static getResponsiveStyles() {
+        return `
+            @media (max-width: 820px) {
+                body.dmhy-modern .header { height: 76px !important; }
+                body.dmhy-modern .headerleft,
+                body.dmhy-modern .headerleft img { height: 76px !important; }
+                body.dmhy-modern .headerright { display: none; }
+                body.dmhy-modern .main {
+                    width: calc(100vw - 18px) !important;
+                    margin-top: 10px !important;
                 }
-            } catch (error) {
-                console.error(`[DMHY Block] Error getting username for user ${id}:`, error);
+                body.dmhy-modern #mini_jmd { display: none; }
+                body.dmhy-modern .quick_search form {
+                    grid-template-columns: minmax(0,1fr) auto;
+                }
+                body.dmhy-modern .quick_search form > a { grid-column: 1 / -1; }
+                body.dmhy-detail-page .topics_bk {
+                    grid-template-columns: minmax(0,1fr);
+                }
+                body.dmhy-detail-page .topic-main {
+                    grid-column: 1;
+                    grid-row: 1;
+                }
+                body.dmhy-detail-page .user-sidebar {
+                    grid-column: 1;
+                    grid-row: 2;
+                }
+                body.dmhy-detail-page .topic-title .resource-info {
+                    column-count: 1;
+                }
+                .dmhy-topic-card { border-radius: 8px; }
             }
-            // 添加延迟以避免请求过快
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
+        `;
+    }
 
-        // 合并已知的用户名
-        userIds.forEach(id => {
-            const cachedName = this.blockListManager.userNameMap.get(id.toString());
-            if (cachedName) {
-                userNames[id] = cachedName;
-            }
+}
+/**
+ * 事件管理类
+ */
+class EventManager {
+    constructor(filterManager) {
+        this.filterManager = filterManager;
+    }
+
+    init() {
+        this.initSortingEvents();
+    }
+
+    initSortingEvents() {
+        document.querySelectorAll("th.header").forEach(header => {
+            header.addEventListener('click', () => {
+                setTimeout(() => this.filterManager.applyFilters(), 100);
+            });
         });
-
-        return userNames;
-    }
-
-    setToken(token) {
-        this.token = token;
-        GM_setValue(CONFIG.storage.githubTokenKey, token);
-    }
-
-    setContributing(isContributing) {
-        this.isContributing = isContributing;
-        GM_setValue(CONFIG.storage.isContributingKey, isContributing);
     }
 }
 
@@ -1622,6 +1648,9 @@ class App {
             AdBlocker.init();
             Utils.log('广告拦截器初始化完成');
 
+            PageBeautifier.init();
+            Utils.log('页面美化完成');
+
             const blockListManager = new BlockListManager();
             await blockListManager.init();
             Utils.log('黑名单管理器初始化完成');
@@ -1631,11 +1660,7 @@ class App {
             Utils.log('标题管理器初始化完成');
 
             const filterManager = new FilterManager(blockListManager, titleManager);
-            const githubSyncManager = new GitHubSyncManager(blockListManager);
-            await githubSyncManager.init();
-            Utils.log('GitHub 同步管理器初始化完成');
-
-            const uiManager = new UIManager(blockListManager, filterManager, githubSyncManager, titleManager);
+            const uiManager = new UIManager(blockListManager, filterManager, titleManager);
             const eventManager = new EventManager(filterManager);
 
             uiManager.init();
