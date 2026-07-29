@@ -1616,6 +1616,287 @@ class PageBeautifier {
 
 }
 /**
+ * 尽早阻止已知推广脚本被创建或插入，作为请求层拦截的兼容回退。
+ */
+class ScriptBlocker {
+    static installed = false;
+
+    static init() {
+        if (this.installed) return;
+        this.installed = true;
+
+        const shouldBlock = node => {
+            if (!(node instanceof HTMLScriptElement) || !node.src) return false;
+            return CONFIG.blockedScripts.some(pattern => pattern.test(node.src));
+        };
+
+        const removeBlockedScripts = root => {
+            if (shouldBlock(root)) root.remove();
+            if (root instanceof Element || root instanceof Document) {
+                root.querySelectorAll('script[src]').forEach(script => {
+                    if (shouldBlock(script)) script.remove();
+                });
+            }
+        };
+
+        const wrapInsertion = methodName => {
+            const original = Node.prototype[methodName];
+            Node.prototype[methodName] = function(node, ...args) {
+                if (shouldBlock(node)) return node;
+                return original.call(this, node, ...args);
+            };
+        };
+        wrapInsertion('appendChild');
+        wrapInsertion('insertBefore');
+        wrapInsertion('replaceChild');
+
+        const originalSetAttribute = Element.prototype.setAttribute;
+        Element.prototype.setAttribute = function(name, value) {
+            if (this instanceof HTMLScriptElement && name.toLowerCase() === 'src') {
+                const resolvedUrl = new URL(String(value), location.href).href;
+                if (CONFIG.blockedScripts.some(pattern => pattern.test(resolvedUrl))) return;
+            }
+            return originalSetAttribute.call(this, name, value);
+        };
+
+        const srcDescriptor = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+        if (srcDescriptor?.configurable && srcDescriptor.get && srcDescriptor.set) {
+            Object.defineProperty(HTMLScriptElement.prototype, 'src', {
+                configurable: true,
+                enumerable: srcDescriptor.enumerable,
+                get: srcDescriptor.get,
+                set(value) {
+                    const resolvedUrl = new URL(String(value), location.href).href;
+                    if (CONFIG.blockedScripts.some(pattern => pattern.test(resolvedUrl))) return;
+                    srcDescriptor.set.call(this, value);
+                }
+            });
+        }
+
+        removeBlockedScripts(document);
+        const observer = new MutationObserver(records => {
+            records.forEach(record => {
+                record.addedNodes.forEach(removeBlockedScripts);
+            });
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+    }
+}
+
+/**
+ * 在浏览器首次绘制页面前注入样式，避免先显示原站布局、随后再切换布局造成闪烁。
+ */
+class EarlyPageBootstrap {
+    static init() {
+        const style = document.createElement('style');
+        style.id = 'dmhy-modern-style';
+        style.textContent = [
+            PageBeautifier.buildStyleText(),
+            CONFIG.selectors.adSelectors
+                .map(selector => `${selector} { display: none !important; }`)
+                .join('\n')
+        ].join('\n');
+        document.documentElement.appendChild(style);
+
+        const applyBodyClasses = () => {
+            if (!document.body) return false;
+
+            document.body.classList.add('dmhy-modern');
+            if (/\/topics\/view\//.test(location.pathname)) {
+                document.body.classList.add('dmhy-detail-page');
+            } else {
+                document.body.classList.add('dmhy-list-page');
+            }
+            return true;
+        };
+
+        if (!applyBodyClasses()) {
+            const observer = new MutationObserver(() => {
+                if (applyBodyClasses()) observer.disconnect();
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+    }
+}
+
+/**
+ * 根据用户意图预取站内页面，让后续导航尽量直接命中浏览器缓存。
+ */
+class LinkPreloader {
+    static prefetchedUrls = new Set();
+    static scannedTopicUrls = new Set();
+    static knownImageUrls = new Set();
+    static imagePreloads = [];
+    static hoverTimers = new WeakMap();
+    static maxPrefetches = 16;
+    static maxImagesPerTopic = 8;
+    static imageCacheStorageKey = 'dmhy_preloaded_image_urls';
+
+    static init() {
+        if (navigator.connection?.saveData || /(^|-)2g$/.test(navigator.connection?.effectiveType || '')) {
+            return;
+        }
+
+        try {
+            const storedUrls = JSON.parse(sessionStorage.getItem(this.imageCacheStorageKey) || '[]');
+            storedUrls.forEach(src => this.knownImageUrls.add(src));
+        } catch {
+            sessionStorage.removeItem(this.imageCacheStorageKey);
+        }
+
+        document.addEventListener('pointerover', event => {
+            const link = this.getEligibleLink(event.target);
+            if (!link || this.hoverTimers.has(link)) return;
+
+            const timer = setTimeout(() => {
+                this.hoverTimers.delete(link);
+                this.prefetch(link.href, 'low', true);
+            }, 80);
+            this.hoverTimers.set(link, timer);
+        }, { passive: true });
+
+        document.addEventListener('pointerout', event => {
+            const link = this.getEligibleLink(event.target);
+            if (!link || link.contains(event.relatedTarget)) return;
+
+            clearTimeout(this.hoverTimers.get(link));
+            this.hoverTimers.delete(link);
+        }, { passive: true });
+
+        const preloadImmediately = event => {
+            const link = this.getEligibleLink(event.target);
+            if (link) this.prefetch(link.href, 'high', true);
+        };
+        document.addEventListener('pointerdown', preloadImmediately, { passive: true });
+        document.addEventListener('touchstart', preloadImmediately, { passive: true });
+
+        const preloadVisibleTopics = () => {
+            document.querySelectorAll('#topic_list td.title > a[href]').forEach(link => {
+                if (this.prefetchedUrls.size < 4 && this.isEligible(link)) {
+                    this.prefetch(link.href, 'low', false);
+                }
+            });
+        };
+
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(preloadVisibleTopics, { timeout: 2500 });
+        } else {
+            setTimeout(preloadVisibleTopics, 1200);
+        }
+    }
+
+    static getEligibleLink(target) {
+        const link = target instanceof Element ? target.closest('a[href]') : null;
+        return link && this.isEligible(link) ? link : null;
+    }
+
+    static isEligible(link) {
+        if (link.hasAttribute('download')) return false;
+
+        let url;
+        try {
+            url = new URL(link.href, location.href);
+        } catch {
+            return false;
+        }
+
+        if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return false;
+        if (url.pathname === location.pathname && url.search === location.search) return false;
+        if (/\/(?:logout|login|register)(?:\/|$)/i.test(url.pathname)) return false;
+        return true;
+    }
+
+    static prefetch(href, priority, includeTopicImages) {
+        if (document.hidden) return;
+
+        const url = new URL(href, location.href);
+        if (includeTopicImages && /\/topics\/view\//.test(url.pathname)) {
+            this.prefetchTopicImages(url.href, priority);
+        }
+
+        if (this.prefetchedUrls.size >= this.maxPrefetches) return;
+        if (this.prefetchedUrls.has(url.href)) return;
+        this.prefetchedUrls.add(url.href);
+
+        const hint = document.createElement('link');
+        hint.rel = 'prefetch';
+        hint.as = 'document';
+        hint.href = url.href;
+        hint.fetchPriority = priority;
+        document.head.appendChild(hint);
+    }
+
+    static async prefetchTopicImages(topicUrl, priority) {
+        if (this.scannedTopicUrls.has(topicUrl)) return;
+        this.scannedTopicUrls.add(topicUrl);
+
+        try {
+            const response = await fetch(topicUrl, {
+                credentials: 'same-origin',
+                cache: 'force-cache',
+                priority
+            });
+            if (!response.ok) return;
+
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const imageUrls = Array.from(doc.querySelectorAll('.topic-nfo img'))
+                .map(image => image.dataset.src || image.dataset.original || image.getAttribute('src'))
+                .filter(Boolean)
+                .map(src => new URL(src, topicUrl).href)
+                .filter((src, index, urls) => {
+                    return /^https?:/i.test(src) &&
+                        urls.indexOf(src) === index &&
+                        !this.isImageKnown(src);
+                })
+                .slice(0, this.maxImagesPerTopic);
+
+            imageUrls.forEach(src => {
+                this.rememberImage(src);
+                const image = new Image();
+                image.decoding = 'async';
+                image.fetchPriority = priority;
+                image.src = src;
+                this.imagePreloads.push(image);
+            });
+        } catch (error) {
+            Utils.handleError(error, 'LinkPreloader.prefetchTopicImages');
+        }
+    }
+
+    static isImageKnown(src) {
+        if (this.knownImageUrls.has(src)) return true;
+
+        const loadedInThisDocument = Array.from(document.images).some(image => {
+            return image.currentSrc === src || image.src === src;
+        });
+        if (loadedInThisDocument) {
+            this.rememberImage(src);
+            return true;
+        }
+
+        const hasResourceTimingEntry = performance.getEntriesByName(src, 'resource')
+            .some(entry => entry.responseEnd > 0);
+        if (hasResourceTimingEntry) {
+            this.rememberImage(src);
+            return true;
+        }
+
+        return false;
+    }
+
+    static rememberImage(src) {
+        this.knownImageUrls.add(src);
+        try {
+            const recentUrls = Array.from(this.knownImageUrls).slice(-100);
+            sessionStorage.setItem(this.imageCacheStorageKey, JSON.stringify(recentUrls));
+        } catch {
+            // 存储不可用时仅保留当前页面内的去重。
+        }
+    }
+}
+
+/**
  * 事件管理类
  */
 class EventManager {
