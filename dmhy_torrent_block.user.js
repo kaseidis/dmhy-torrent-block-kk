@@ -2,18 +2,17 @@
 // @name:zh-CN   动漫花园种子屏蔽助手
 // @name         DMHY Torrent Block
 // @namespace    https://github.com/xkbkx5904
-// @version      1.3.10
+// @version      2.0.0
 // @author       xkbkx5904
-// @description  Enhanced version of DMHY Block script with more features: title display management, user interface management, regex filtering, context menu, ad blocking, and GitHub sync
-// @description:zh-CN  增强版的动漫花园资源屏蔽工具，支持标题显示管理（简繁体切换）、用户界面管理、正则表达式过滤、右键菜单、广告屏蔽和GitHub同步等功能。提供标题过滤、云端数据同步、公共统计池和用户排行榜等特性。
-// @homepage     https://github.com/xkbkx5904/dmhy-torrent-block
-// @supportURL   https://github.com/xkbkx5904/dmhy-torrent-block/issues
+// @description  Local-only DMHY filtering with a modern, readable interface
+// @description:zh-CN  仅本地运行的动漫花园资源屏蔽与页面美化工具。
+// @homepage     https://github.com/kaseidis/dmhy-torrent-block-kk
+// @supportURL   https://github.com/kaseidis/dmhy-torrent-block-kk/issues
 // @match        *://share.dmhy.org/*
 // @license      MIT
 // @run-at       document-end
 // @grant        GM_setValue
 // @grant        GM_getValue
-// @grant        GM_xmlhttpRequest
 // @noframes
 // @copyright    2025, xkbkx5904
 // @originalAuthor tautcony
@@ -23,122 +22,11 @@
 // ==/UserScript==
 
 /*
-更新日志：
-v1.3.10
-- 优化标题转换功能，智能识别中英文内容
-- 改进标题显示逻辑，只转换中文部分
-- 保留英文、数字和特殊字符的原始格式
-- 提升标题转换的准确性和性能
-- 优化代码结构，提高可维护性
-
-v1.3.9
-- 修复标题简繁体转换时链接丢失的问题
-- 优化标题转换逻辑，保留HTML结构
-- 改进文本节点处理方式
-
-v1.3.8
-- 重构 TitleManager 和 UIManager 类，优化代码结构
-- 移除重复的标题显示管理代码
-- 改进类之间的依赖关系
-- 优化事件监听器的绑定逻辑
-- 提升代码可维护性和性能
-
-v1.3.7
-- 重构标题管理功能，创建独立的 TitleManager 类
-- 优化简繁体切换功能，支持实时切换
-- 改进代码结构，提高可维护性
-- 统一缓存管理，创建 CacheManager 类
-
-v1.3.6
-- 添加详细的日志输出系统
-- 优化错误处理和提示信息
-- 改进代码结构和可维护性
-- 统一配置管理
-
-v1.3.5
-- 优化 GitHub 同步功能
-- 改进 Gist 查找和创建逻辑
-- 修复同步时 Gist 不存在的问题
-- 增强错误处理和自动恢复机制
-
-v1.3.4
-- 优化公共统计池的JSON数据格式
-- 改进数据可读性，添加缩进和换行
-- 优化数据存储结构
-
-v1.3.1
-- 优化公共统计池显示效果
-- 添加用户名自动获取和缓存功能
-- 改进统计列表显示格式，支持显示用户名
-- 优化批量获取用户名的性能
-
-v1.3.0
-- 添加 GitHub Gist 同步功能
-- 支持黑名单数据的云端备份和恢复
-- 添加 GitHub 登录和验证功能
-- 支持将黑名单数据贡献到公共统计池
-- 添加黑名单用户排行榜功能
-
-v1.2.4
-- 优化管理界面加载速度
-- 移除打开管理界面时的加载提示
-- 使用缓存的用户名信息，提升显示速度
-- 异步更新缺失的用户名信息
-
-v1.2.3
-- 添加行重排序功能，修复斑马纹样式 (感谢 ishadows)
-- 优化过滤后的显示效果
-
-v1.2.2
-- 优化简繁体转换功能，增加香港繁体支持
-- 添加文字转换缓存机制，提升性能
-- 扩大缓存容量至100条
-- 改进转换准确度
-
-v1.2.1
-- 修复opencc依赖问题
-
-v1.2.0
-- 添加简繁体标题过滤功能
-- 集成OpenCC实现准确的简繁体转换
-- 优化关键词过滤逻辑，支持不区分简繁体
-
-v1.1.6
-- 修复关键词输入单个斜杠时的验证问题
-- 优化关键词处理逻辑，将单个斜杠视为普通字符串过滤
-- 改进管理界面，已有内容时自动在末尾添加分号，方便添加新内容
-
-v1.1.5
-- 移除右键添加黑名单时的通知提示
-- 优化代码结构，删除未使用的通知管理类
-- 改进性能，减少不必要的DOM操作
-
-v1.1.4
-- 修复管理界面关闭时错误的未保存更改提示
-
-v1.1.3
-- 优化用户名显示和管理功能
-- 改进用户ID输入规则提示
-- 优化未完整删除的用户数据处理逻辑
-
-v1.1.2
-- 优化用户名显示和管理功能
-- 改进用户ID输入规则提示
-- 优化未完整删除的用户数据处理逻辑
-
-v1.1.1
-- 修复数字ID选择器的兼容性问题
-- 优化广告屏蔽性能和时机
-- 改进广告选择器的精确度
-- 统一广告和PikPak按钮的处理逻辑
-
-v1.1.0
-- 初始版本发布
-- 支持用户界面管理
-- 支持正则表达式过滤
-- 支持右键菜单
-- 支持广告屏蔽
-*/
+ * 本地维护版 2.0
+ * - 移除 GitHub Token、Gist 同步与公共统计功能
+ * - 列表页和详情页使用独立的样式作用域
+ * - 保留本地黑名单、标题转换、右键屏蔽与广告隐藏
+ */
 
 /**
  * 配置对象
@@ -147,11 +35,7 @@ const CONFIG = {
     // 存储相关配置
     storage: {
         blockListKey: 'dmhy_blocklist',
-        usernameMapKey: 'dmhy_username_map',
-        githubTokenKey: 'github_token',
-        githubGistIdKey: 'github_gist_id',
-        isContributingKey: 'is_contributing',
-        githubUserKey: 'github_user'
+        usernameMapKey: 'dmhy_username_map'
     },
 
     // DOM选择器配置
@@ -161,8 +45,12 @@ const CONFIG = {
         titleCell: "td.title",
         adSelectors: [
             '[id="1280_adv"]',
+            '[id="1280_ad"]',
+            '[id="ai"]',
             '[id="pkpk"]',
+            '.ad',
             '.kiwi-ad-wrapper-1280x120',
+            '.kiwi-ad-wrapper-950x80',
             'a[onclick*="_trackEvent"][onclick*="ad"]',
             'a[href*="mypikpak.com/drive/url-checker"]',
             'div[align="center"] > a[href*="sng.link"] > img',
@@ -170,12 +58,6 @@ const CONFIG = {
             'img[src*="/VA"][src*=".gif"]',
             '.download-pp'
         ]
-    },
-
-    // GitHub 相关配置
-    github: {
-        publicStatsGistId: 'c2df1ecfe5d04f3f2cfb92fd206d4884',
-        gistDescription: 'DMHY Block List Sync'
     },
 
     // 缓存配置
@@ -188,19 +70,6 @@ const CONFIG = {
  * 样式配置
  */
 const STYLES = {
-    notification: `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 10px 20px;
-        border-radius: 4px;
-        z-index: 10001;
-        font-size: 14px;
-        transition: opacity 0.3s;
-    `,
     blocklistUI: `
         position: fixed;
         left: 10px;
@@ -229,7 +98,7 @@ const STYLES = {
 class CacheManager {
     constructor() {
         this.caches = new Map();
-        this.maxSize = 200;
+        this.maxSize = CONFIG.cache.textConverterSize;
     }
 
     get(cacheName, key) {
@@ -339,12 +208,6 @@ class Utils {
         return keyword;
     }
 
-    static formatKeyword(keyword) {
-        if (keyword instanceof RegExp) {
-            return `/${keyword.source}/`;
-        }
-        return keyword;
-    }
 }
 
 /**
