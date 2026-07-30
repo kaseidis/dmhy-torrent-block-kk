@@ -1813,8 +1813,10 @@ class LinkPreloader {
         }
 
         if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return false;
+        const isTopicDetail = /\/topics\/view\//.test(url.pathname);
+        const isPagination = /^\/topics\/list(?:\/[^/]+)*\/page\/\d+\/?$/.test(url.pathname);
+        if (!isTopicDetail && !isPagination) return false;
         if (url.pathname === location.pathname && url.search === location.search) return false;
-        if (/\/(?:logout|login|register)(?:\/|$)/i.test(url.pathname)) return false;
         return true;
     }
 
